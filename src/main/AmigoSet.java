@@ -1,5 +1,8 @@
 package main;
 
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.*;
 import java.util.function.Consumer;
@@ -95,6 +98,45 @@ public class AmigoSet<E> extends AbstractSet<E> implements Serializable, Cloneab
         }
         catch (Exception e) {
             throw new InternalError(e);
+        }
+    }
+
+    /**
+     * Serialization / deserialization
+     * @param oos
+     * @throws IOException
+     */
+    private void writeObject(ObjectOutputStream oos) throws IOException {
+        //Serialize the object
+        oos.defaultWriteObject();
+
+        //Serialize capacity and loadFactor (capacity is int, loadFactor - float)
+        oos.writeInt(HashMapReflectionHelper.<Integer>callHiddenMethod(map, "capacity"));
+        oos.writeFloat(HashMapReflectionHelper.<Float>callHiddenMethod(map, "loadFactor"));
+
+        //Serialize all map contents, size first
+        oos.writeInt(map.size());
+        for (E e : map.keySet()) oos.writeObject(e);
+    }
+
+    private void readObject(ObjectInputStream ois) throws IOException, ClassNotFoundException {
+        //Read the object
+        ois.defaultReadObject();
+
+        //Deserialize capacity, load factor, size
+        int capacity = ois.readInt();
+        float loadFactor = ois.readFloat();
+        int size = ois.readInt();
+
+
+        //Recreate the map
+        map = new HashMap<>(capacity, loadFactor);
+
+
+        //Read all map contents
+        for (int i = 0; i < size; i++) {
+            E e = (E) ois.readObject();
+            map.put(e, PRESENT);
         }
     }
 }
